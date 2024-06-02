@@ -1,8 +1,33 @@
 import { useCallback } from 'react';
-import { useMessage } from '../components/Header';
+import { useMessage } from '../layouts/Header';
+import { clearCookie } from '../utils/cookies';
+import { isEmpty, isObject } from '../utils/functions';
 
 const useErrorHandler = () => {
     const { showError } = useMessage();
+
+    const getMessage = useCallback(function (error) {
+        const field = Object.keys(error)[0];
+        const fieldValue = error[field];
+
+        if (!field) return 'Unable to encounter the error';
+
+        if (typeof fieldValue === 'string') return fieldValue;
+
+        if (Array.isArray(fieldValue)) {
+            const innerField = fieldValue.shift();
+            if (typeof innerField === 'string') return innerField;
+
+            if (isObject(innerField) && !isEmpty(innerField)) {
+                const firstField = Object.keys(innerField)[0];
+                const firstFieldValue = innerField[firstField];
+
+                if (typeof firstFieldValue === 'string') return firstFieldValue;
+            }
+
+            if (typeof innerField !== 'string') return getMessage(innerField);
+        }
+    }, []);
 
     const errorHandler = useCallback(
         error => {
@@ -11,6 +36,8 @@ const useErrorHandler = () => {
                 const data = error.response.data;
                 const status = error.response.status;
                 const headers = error.response.headers;
+
+                const message = data ? getMessage(data) : '';
 
                 // The request was made and the server responded with a status code
                 // that falls out of the range of 2xx
@@ -46,27 +73,27 @@ const useErrorHandler = () => {
 
                 // CLIENT ERROR
                 if (status === 400)
-                    return showError(data || `Ensure you've entered valid information.`);
+                    return showError(message || `Ensure you've entered valid information.`);
 
                 if (status === 401)
                     return showError(
-                        data ||
-                            `Unauthorized: Access Denied. Verify your credentials and try again. `
+                        `Unauthorized: Access Denied. Verify your credentials and try again. `
                     );
 
-                if (status === 403)
+                if (status === 403) {
+                    clearCookie('accessToken');
+                    window.location.reload();
                     return showError(
-                        data ||
-                            `Access to this resource is denied. You may not have the necessary permissions.`
+                        `Access to this resource is denied. You may not have the necessary permissions.`
                     );
+                }
 
                 if (status === 404)
-                    return showError(data || `We can't find what you are looking for.`);
+                    return showError(message || `We can't find what you are looking for.`);
 
                 if (status === 409)
                     return showError(
-                        data ||
-                            `It seems there's a conflict between your request and the current state of the resource.`
+                        `It seems there's a conflict between your request and the current state of the resource.`
                     );
 
                 if (data.errors) {
@@ -82,10 +109,10 @@ const useErrorHandler = () => {
             } else {
                 // Something happened in setting up the request that triggered an Error
                 console.log('Error', error.message);
-                showError(error.message);
+                return showError(error.message);
             }
         },
-        [showError]
+        [showError, getMessage]
     );
 
     return errorHandler;

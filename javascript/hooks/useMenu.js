@@ -3,16 +3,18 @@ import MuiMenu from '@mui/material/Menu';
 
 function useMenu() {
     const [anchorEl, setAnchorEl] = useState(null);
+    const [payload, setPayload] = useState();
 
-    const openMenu = useCallback(function (e) {
+    const openMenu = useCallback(function (e, payload) {
         setAnchorEl(e.currentTarget);
+        if (payload) setPayload(payload);
     }, []);
 
     const closeMenu = useCallback(function () {
         setAnchorEl(null);
     }, []);
 
-    return { anchorEl, openMenu, closeMenu };
+    return { anchorEl, openMenu, closeMenu, payload };
 }
 
 function Menu(props) {
